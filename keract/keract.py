@@ -106,7 +106,12 @@ def get_gradients_of_trainable_weights(model, x, y):
     """
     Get the gradients of trainable_weights for the kernel and the bias nodes for all filters in each layer.
     Trainable_weights gradients are averaged over the minibatch.
-    :param model: keras compiled model or one of ['vgg16', 'vgg19', 'inception_v3', 'inception_resnet_v2',
+    :param model: keras compiled 
+    
+    
+    
+    
+    one of ['vgg16', 'vgg19', 'inception_v3', 'inception_resnet_v2',
     'mobilenet_v2', 'mobilenetv2']
     :param x: inputs for which gradients are sought (averaged over all inputs if batch_size > 1)
     :param y: outputs for which gradients are sought
@@ -190,6 +195,8 @@ def _get_gradients(model, x, y, nodes):
 def _get_nodes(module, output_format, nested=False, layer_names=[]):
     is_model_or_layer = isinstance(module, Model) or isinstance(module, Layer)
     has_layers = hasattr(module, '_layers') and bool(module._layers)
+    if not is_model_or_layer:
+        print('not model or layer:', module)
     assert is_model_or_layer, 'Not a model or layer!'
 
     def output(u):
