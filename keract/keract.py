@@ -426,6 +426,118 @@ def display_activations(activations, cmap=None, save=False, directory='.',
         index += 1
         plt.close(fig)
 
+def display_heatmaps_1(activations, input_image, directory='.', save=False, fix=True, in_fig=None, in_axes=None):
+    """
+    Plot heatmaps of activations for one filter overlayed on the input image for each layer,
+    allowing external control of plot grid
+    :param activations: dict mapping layers to corresponding activations with the shape
+    (1, output height, output width, number of filters)
+    :param input_image: numpy array, input image for the overlay
+    :param save: bool, if the plot should be saved
+    :param fix: bool, if automated checks and fixes for incorrect images should be run
+    :param directory: string - where to store the activations (if save is True)
+    :return: None
+    """
+    from PIL import Image
+    import matplotlib.pyplot as plt
+    from sklearn.preprocessing import MinMaxScaler
+    import math
+
+    data_format = K.image_data_format()
+    if fix:
+        # fixes common errors made when passing the image
+        # I recommend the use of keras' load_img function passed to np.array to ensure
+        # images are loaded in in the correct format
+        # removes the batch size from the shape
+        if len(input_image.shape) == 4:
+            input_image = input_image.reshape(input_image.shape[1], input_image.shape[2], input_image.shape[3])
+        # removes channels from the shape of grayscale images
+        if len(input_image.shape) == 3 and input_image.shape[2] == 1:
+            input_image = input_image.reshape(input_image.shape[0], input_image.shape[1])
+
+    index = 0
+    for layer_name, acts in activations.items():
+        # print(layer_name, acts.shape, end=' ')
+        if acts.shape[0] != 1:
+            print('-> Skipped. First dimension is not 1.')
+            continue
+        if len(acts.shape) <= 2:
+            print('-> Skipped. 2D Activations.')
+            continue
+        print('')
+        if fig:
+            fig = in_fig
+            axes = in_axes
+            ncols = axes.shape[0]
+            if len(axes.shape) == 1:
+                nrows = 1
+            else
+                nrows = axes.shape[1]
+        else:
+            nrows = int(math.sqrt(acts.shape[-1]) - 0.001) + 1  # best square fit for the given number
+            ncols = int(math.ceil(acts.shape[-1] / nrows))
+            fig, axes = plt.subplots(nrows, ncols, figsize=(12, 12))
+        fig.suptitle(layer_name)
+
+        # computes values required to scale the activations (which will form our heat map) to be in range 0-1
+        scaler = MinMaxScaler()
+        # reshapes to be 2D with an automaticly calculated first dimension and second
+        # dimension of 1 in order to keep scikitlearn happy
+        scaler.fit(acts.reshape(-1, 1))
+
+        # loops over each filter/neuron
+        for i in range(nrows * ncols):
+            if i < acts.shape[-1]:
+                if len(acts.shape) == 3:
+                    # gets the activation of the ith layer
+                    if data_format == 'channels_last':
+                        img = acts[0, :, i]
+                    elif data_format == 'channels_first':
+                        img = acts[0, i, :]
+                    else:
+                        raise Exception('Unknown data_format.')
+                elif len(acts.shape) == 4:
+                    if data_format == 'channels_last':
+                        img = acts[0, :, :, i]
+                    elif data_format == 'channels_first':
+                        img = acts[0, i, :, :]
+                    else:
+                        raise Exception('Unknown data_format.')
+                else:
+                    raise Exception('Expect a tensor of 3 or 4 dimensions.')
+
+                # scales the activation (which will form our heat map) to be in range 0-1 using
+                # the previously calculated statistics
+                if len(img.shape) == 1:
+                    img = scaler.transform(img.reshape(-1, 1))
+                else:
+                    img = scaler.transform(img)
+                # print(img.shape)
+                img = Image.fromarray(img)
+                # resizes the activation to be same dimensions of input_image
+                img = img.resize((input_image.shape[1], input_image.shape[0]), Image.LANCZOS)
+                img = np.array(img)
+                if hasattr(axes, 'flat'):
+                    axes.flat[i].imshow(input_image / 255.0)
+                    # overlay the activation at 70% transparency  onto the image with a heatmap colour scheme
+                    # Lowest activations are dark, highest are dark red, mid are yellow
+                    axes.flat[i].imshow(img, alpha=0.3, cmap='jet', interpolation='bilinear')
+                else:
+                    axes.imshow(input_image / 255.0)
+                    axes.imshow(img, alpha=0.3, cmap='jet', interpolation='bilinear')
+            # axis off.
+            axes.flat[i].axis('off') if hasattr(axes, 'flat') else axes.axis('off')
+
+        if save:
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            output_filename = os.path.join(directory, '{0}_{1}.png'.format(index, layer_name.split('/')[0]))
+            plt.savefig(output_filename, bbox_inches='tight')
+        else:
+            plt.show()
+        index += 1
+        plt.close(fig)
+        return
 
 def display_heatmaps(activations, input_image, directory='.', save=False, fix=True):
     """
