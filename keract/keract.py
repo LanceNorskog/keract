@@ -464,14 +464,13 @@ def display_heatmaps_1(activations, input_image, directory='.', save=False, fix=
         if len(acts.shape) <= 2:
             print('-> Skipped. 2D Activations.')
             continue
-        print('')
-        if fig:
+        if in_fig:
             fig = in_fig
             axes = in_axes
             ncols = axes.shape[0]
             if len(axes.shape) == 1:
                 nrows = 1
-            else
+            else:
                 nrows = axes.shape[1]
         else:
             nrows = int(math.sqrt(acts.shape[-1]) - 0.001) + 1  # best square fit for the given number
